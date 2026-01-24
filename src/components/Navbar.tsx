@@ -1,4 +1,4 @@
-import { Home, User, Table } from 'lucide-react';
+import { Home, User, Table, CheckSquare } from 'lucide-react';
 import { Button } from './ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { Link } from '@tanstack/react-router';
@@ -42,6 +42,12 @@ export function Navbar() {
               <Button variant="ghost" size="sm" className="rounded-full gap-2">
                 <Table className="h-4 w-4" />
                 Tables
+              </Button>
+            </Link>
+            <Link to="/tasks">
+              <Button variant="ghost" size="sm" className="rounded-full gap-2">
+                <CheckSquare className="h-4 w-4" />
+                Tasks
               </Button>
             </Link>
             <Button variant="ghost" size="sm" className="rounded-full gap-2">
