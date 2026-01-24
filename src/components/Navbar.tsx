@@ -1,6 +1,7 @@
-import { Home, User } from 'lucide-react';
+import { Home, User, Table } from 'lucide-react';
 import { Button } from './ui/button';
 import { ThemeToggle } from './ThemeToggle';
+import { Link } from '@tanstack/react-router';
 
 export function Navbar() {
   return (
@@ -8,7 +9,7 @@ export function Navbar() {
       <div className="backdrop-blur-xl bg-background/40 dark:bg-background/20 border border-border/40 rounded-full shadow-2xl px-6 py-3">
         <div className="flex items-center gap-6">
           {/* Logo and Title */}
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
               <svg
                 viewBox="0 0 24 24"
@@ -24,17 +25,25 @@ export function Navbar() {
               </svg>
             </div>
             <span className="font-semibold text-lg">TaskFlow</span>
-          </div>
+          </Link>
 
           {/* Divider */}
           <div className="h-8 w-px bg-border/50" />
 
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="rounded-full gap-2">
-              <Home className="h-4 w-4" />
-              Home
-            </Button>
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="rounded-full gap-2">
+                <Home className="h-4 w-4" />
+                Home
+              </Button>
+            </Link>
+            <Link to="/tables">
+              <Button variant="ghost" size="sm" className="rounded-full gap-2">
+                <Table className="h-4 w-4" />
+                Tables
+              </Button>
+            </Link>
             <Button variant="ghost" size="sm" className="rounded-full gap-2">
               <User className="h-4 w-4" />
               Profile

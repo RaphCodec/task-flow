@@ -120,12 +120,24 @@ export default function Aurora(props) {
     const ctn = ctnDom.current;
     if (!ctn) return;
 
-    const renderer = new Renderer({
-      alpha: true,
-      premultipliedAlpha: true,
-      antialias: true
-    });
+    let renderer;
+    try {
+      renderer = new Renderer({
+        alpha: true,
+        premultipliedAlpha: true,
+        antialias: true
+      });
+    } catch (e) {
+      console.warn('Failed to create WebGL renderer:', e);
+      return;
+    }
+
     const gl = renderer.gl;
+    if (!gl || !gl.canvas) {
+      console.warn('WebGL context or canvas not available');
+      return;
+    }
+    
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -167,7 +179,9 @@ export default function Aurora(props) {
     });
 
     const mesh = new Mesh(gl, { geometry, program });
-    ctn.appendChild(gl.canvas);
+    if (gl.canvas && ctn.contains && !ctn.contains(gl.canvas)) {
+      ctn.appendChild(gl.canvas);
+    }
 
     let animateId = 0;
     const update = t => {
@@ -181,7 +195,9 @@ export default function Aurora(props) {
         const c = new Color(hex);
         return [c.r, c.g, c.b];
       });
-      renderer.render({ scene: mesh });
+      if (renderer && renderer.render) {
+        renderer.render({ scene: mesh });
+      }
     };
     animateId = requestAnimationFrame(update);
 
@@ -190,10 +206,16 @@ export default function Aurora(props) {
     return () => {
       cancelAnimationFrame(animateId);
       window.removeEventListener('resize', resize);
-      if (ctn && gl.canvas.parentNode === ctn) {
-        ctn.removeChild(gl.canvas);
+      if (ctn && gl?.canvas && gl.canvas.parentNode === ctn) {
+        try {
+          ctn.removeChild(gl.canvas);
+        } catch (e) {
+          console.warn('Failed to remove canvas:', e);
+        }
       }
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      if (gl) {
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amplitude]);
