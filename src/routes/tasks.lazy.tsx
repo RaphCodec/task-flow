@@ -16,7 +16,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { Home, Table, CheckSquare, Settings, FileText } from 'lucide-react'
+import { Home, Table, CheckSquare } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/tasks')({
@@ -55,19 +55,16 @@ function TasksPage() {
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
-        <Sidebar>
-          <SidebarHeader>
-            <div className="flex items-center gap-2 px-4 py-2">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
-                <CheckSquare className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-semibold text-lg">TaskFlow</span>
-            </div>
+        <Sidebar className="border-none">
+          <SidebarHeader className="border-none">
+            <Link to="/" className="flex items-center gap-2 px-4 py-4">
+              <CheckSquare className="h-5 w-5" />
+              <span className="font-semibold">TaskFlow</span>
+            </Link>
           </SidebarHeader>
           
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
@@ -97,41 +94,20 @@ function TasksPage() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton>
-                      <FileText className="h-4 w-4" />
-                      <span>Documents</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton>
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter>
-            <div className="flex items-center justify-between px-4 py-2">
-              <span className="text-sm text-muted-foreground">Theme</span>
+          <SidebarFooter className="border-none mt-auto">
+            <div className="flex items-center justify-center px-4 py-3">
               <ThemeToggle />
             </div>
           </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
-          <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center gap-4 px-4">
+          <header className="border-b border-border/40">
+            <div className="flex h-12 items-center gap-4 px-4">
               <SidebarTrigger />
-              <h1 className="text-lg font-semibold">Task Flow Board</h1>
+              <h1 className="text-sm font-medium">Task Flow Board</h1>
             </div>
           </header>
           
@@ -140,7 +116,6 @@ function TasksPage() {
               nodes={initialNodes}
               edges={initialEdges}
               fitView
-              className="bg-background"
             >
               <Background />
               <Controls />

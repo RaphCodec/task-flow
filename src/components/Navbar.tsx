@@ -60,7 +60,7 @@ export function Navbar() {
           <div className="h-8 w-px bg-border/50" />
 
           {/* Theme Toggle */}
-          {/* <ThemeToggle /> */}
+          <ThemeToggle />
         </div>
       </div>
     </nav>
