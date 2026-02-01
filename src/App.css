@@ -1,8 +1,8 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 .logo {
@@ -18,6 +18,28 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* ReactFlow overrides */
+.react-flow__wrapper {
+  background: hsl(var(--background));
+}
+
+.react-flow__minimap {
+  background: hsl(var(--card));
+}
+
+.react-flow__controls {
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__controls button {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.react-flow__controls button:hover {
+  background: hsl(var(--accent));
+}
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);

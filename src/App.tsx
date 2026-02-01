@@ -1,86 +1,297 @@
+import { useState, useCallback, useEffect } from 'react'
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+} from '@xyflow/react'
+import type { Connection, NodeTypes } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 import { Button } from "@/components/ui/button"
-import Aurora from '@/components/Aurora';
-import { Navbar } from '@/components/Navbar';
-import { ArrowRight } from 'lucide-react';
+import { TaskNode } from '@/components/TaskNode'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { Plus, Save, Trash2, CheckSquare, Home, Layout, Settings, Users, FileText, Calendar } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import type { TaskData } from '@/lib/markdown'
+import { generateTaskId, createDefaultTask } from '@/lib/markdown'
+import './App.css'
+
+const nodeTypes: NodeTypes = {
+  task: TaskNode,
+}
+
+const initialNodes = [
+  {
+    id: '1',
+    type: 'task',
+    position: { x: 100, y: 100 },
+    data: {
+      title: 'Task 1: Planning',
+      date: new Date().toISOString().split('T')[0],
+      content: '- Define requirements\n- Create timeline',
+    } as TaskData,
+  },
+  {
+    id: '2',
+    type: 'task',
+    position: { x: 400, y: 100 },
+    data: {
+      title: 'Task 2: Design',
+      date: new Date().toISOString().split('T')[0],
+      content: '- Create wireframes\n- Design mockups',
+    } as TaskData,
+  },
+  {
+    id: '3',
+    type: 'task',
+    position: { x: 700, y: 100 },
+    data: {
+      title: 'Task 3: Development',
+      date: new Date().toISOString().split('T')[0],
+      content: '- Set up project\n- Implement features',
+    } as TaskData,
+  },
+]
+
+const initialEdges = [
+  { id: 'e1-2', source: '1', target: '2', animated: true },
+  { id: 'e2-3', source: '2', target: '3', animated: true },
+]
 
 function App() {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
+  const [editingData, setEditingData] = useState<TaskData | null>(null)
+
+  // Handle edge connection
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      setEdges((eds) => addEdge(connection, eds))
+      saveToStorage()
+    },
+    [setEdges]
+  )
+
+  // Save node edits
+  const handleSaveNode = useCallback(() => {
+    if (!editingNodeId || !editingData) return
+
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === editingNodeId
+          ? { ...node, data: editingData }
+          : node
+      )
+    )
+
+    saveToStorage()
+    setEditingNodeId(null)
+    setEditingData(null)
+  }, [editingNodeId, editingData, setNodes])
+
+  // Delete node
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    setNodes((nds) => nds.filter((node) => node.id !== nodeId))
+    setEdges((eds) =>
+      eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
+    )
+    saveToStorage()
+  }, [setNodes, setEdges])
+
+  // Create new node
+  const handleAddNode = useCallback(() => {
+    const newNodeId = generateTaskId()
+    const newNode = {
+      id: newNodeId,
+      type: 'task',
+      position: { 
+        x: Math.random() * 400, 
+        y: Math.random() * 400 
+      },
+      data: createDefaultTask(`New Task ${nodes.length + 1}`),
+    }
+    setNodes((nds) => [...nds, newNode])
+    saveToStorage()
+  }, [nodes.length, setNodes])
+
+  // Save to localStorage
+  const saveToStorage = useCallback(() => {
+    const flowState = {
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+      })),
+      edges,
+    }
+    localStorage.setItem('taskFlowState', JSON.stringify(flowState))
+  }, [nodes, edges])
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('taskFlowState')
+    if (saved) {
+      try {
+        const flowState = JSON.parse(saved)
+        setNodes(flowState.nodes)
+        setEdges(flowState.edges)
+      } catch (e) {
+        console.error('Failed to load saved flow:', e)
+      }
+    }
+  }, [])
+
+  // Update editing data
+  const updateNodeData = (field: keyof TaskData, value: string) => {
+    if (!editingData) return
+    setEditingData({
+      ...editingData,
+      [field]: value,
+    })
+  }
+
   return (
-    <div className="dark relative min-h-screen">
-      {/* Aurora Background */}
-      <div className="fixed inset-0 -z-10">
-        <Aurora
-          colorStops={["#e66b71","#825cff","#062def"]}
-          blend={0.5}
-          amplitude={1.0}
-          speed={1}
-        />
-      </div>
-
-      {/* Navbar */}
-      <Navbar />
-
-      {/* Main Content */}
-      <main className="flex flex-col items-center justify-center min-h-screen px-4">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Hero Section */}
-          <div className="space-y-4">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Welcome to{' '}
-              <span className="bg-linear-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
-                TaskFlow
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Streamline your workflow and boost productivity with our intuitive task management platform
-            </p>
+    <TooltipProvider>
+      <div className="flex h-screen w-full">
+        <aside className="w-16 border-r border-border/40 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 flex flex-col">
+          <div className="h-14 flex items-center justify-center border-b border-border/40">
+            <CheckSquare className="h-5 w-5 text-primary" />
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <Button size="lg" className="rounded-full gap-2 text-lg px-8 py-6">
-              Get Started
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-            <Button size="lg" variant="outline" className="rounded-full text-lg px-8 py-6">
-              Learn More
-            </Button>
+          <nav className="flex-1 flex flex-col items-center py-4 gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Home className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right"><p>Home</p></TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Layout className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right"><p>Board</p></TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Calendar className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right"><p>Calendar</p></TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <FileText className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right"><p>Notes</p></TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Users className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right"><p>Team</p></TooltipContent>
+            </Tooltip>
+          </nav>
+
+          <div className="flex flex-col items-center py-4 gap-2 border-t border-border/40">
+            <ThemeToggle />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Settings className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right"><p>Settings</p></TooltipContent>
+            </Tooltip>
           </div>
+        </aside>
 
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-16">
-            <div className="backdrop-blur-xl bg-card/40 border border-border/40 rounded-2xl p-6 space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold">Lightning Fast</h3>
-              <p className="text-muted-foreground">Experience blazing-fast performance with our optimized platform</p>
+        <div className="flex-1 flex flex-col bg-background">
+          <header className="border-b border-border/40 h-16 flex items-center justify-between px-6">
+            <h1 className="text-2xl font-bold">TaskFlow</h1>
+            <div className="flex items-center gap-4">
+              <Button onClick={handleAddNode} size="sm" variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />New Task
+              </Button>
+              <Button onClick={saveToStorage} size="sm" variant="outline" className="gap-2">
+                <Save className="h-4 w-4" />Save
+              </Button>
+              <ThemeToggle />
+            </div>
+          </header>
+
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                fitView
+                onNodeClick={(event, node) => {
+                  setEditingNodeId(node.id)
+                  setEditingData({ ...node.data })
+                }}
+              >
+                <Background />
+                <Controls />
+                <MiniMap />
+              </ReactFlow>
             </div>
 
-            <div className="backdrop-blur-xl bg-card/40 border border-border/40 rounded-2xl p-6 space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold">Secure & Private</h3>
-              <p className="text-muted-foreground">Your data is encrypted and protected with enterprise-grade security</p>
-            </div>
+            {editingNodeId && editingData && (
+              <div className="w-80 border-l border-border/40 p-6 overflow-y-auto flex flex-col gap-4 bg-card">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Edit Task</h2>
+                  <button onClick={() => setEditingNodeId(null)} className="text-muted-foreground hover:text-foreground text-xl">✕</button>
+                </div>
 
-            <div className="backdrop-blur-xl bg-card/40 border border-border/40 rounded-2xl p-6 space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Title</label>
+                  <input type="text" value={editingData.title} onChange={(e) => updateNodeData('title', e.target.value)} className="px-3 py-2 rounded border border-input bg-background text-foreground" placeholder="Task title" />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <input type="date" value={editingData.date} onChange={(e) => updateNodeData('date', e.target.value)} className="px-3 py-2 rounded border border-input bg-background text-foreground" />
+                </div>
+
+                <div className="flex flex-col gap-2 flex-1 min-h-0">
+                  <label className="text-sm font-medium">Content (Markdown)</label>
+                  <textarea value={editingData.content} onChange={(e) => updateNodeData('content', e.target.value)} className="px-3 py-2 rounded border border-input bg-background text-foreground font-mono text-xs flex-1 resize-none" placeholder="# Heading\n- Bullet point\n**Bold text**" />
+                </div>
+
+                <div className="flex gap-2 pt-4 border-t border-border/40">
+                  <Button onClick={handleSaveNode} className="flex-1" size="sm">Save Changes</Button>
+                  <Button onClick={() => { handleDeleteNode(editingNodeId); setEditingNodeId(null); setEditingData(null); }} variant="destructive" size="sm" className="gap-2">
+                    <Trash2 className="h-4 w-4" />Delete
+                  </Button>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold">Team Collaboration</h3>
-              <p className="text-muted-foreground">Work together seamlessly with real-time collaboration features</p>
-            </div>
+            )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
 

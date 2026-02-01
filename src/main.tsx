@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import { router, RouterProvider } from './router'
+import App from './App'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 function applyInitialTheme() {
   try {
@@ -26,6 +27,8 @@ applyInitialTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 )
