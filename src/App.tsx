@@ -13,7 +13,7 @@ import '@xyflow/react/dist/style.css'
 import { Button } from "@/components/ui/button"
 import { TaskNode } from '@/components/TaskNode'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { Plus, Save, Trash2, CheckSquare, Home, Layout, Settings, Users, FileText, Calendar } from 'lucide-react'
+import { Plus, Save, Trash2, CheckSquare, Home, Layout, Settings, Users, Calendar } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { DatePicker } from '@/components/ui/DatePicker'
 import type { TaskData } from '@/lib/markdown'
@@ -346,14 +346,7 @@ function App() {
               <TooltipContent side="right"><p>Calendar</p></TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10">
-                  <FileText className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right"><p>Notes</p></TooltipContent>
-            </Tooltip>
+            {/* Notes removed per user request */}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -366,7 +359,6 @@ function App() {
           </nav>
 
           <div className="flex flex-col items-center py-4 gap-2 border-t border-border/40">
-            <ThemeToggle />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10">
