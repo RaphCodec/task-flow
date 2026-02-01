@@ -15,6 +15,7 @@ import { TaskNode } from '@/components/TaskNode'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Plus, Save, Trash2, CheckSquare, Home, Layout, Settings, Users, FileText, Calendar } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { DatePicker } from '@/components/ui/DatePicker'
 import type { TaskData } from '@/lib/markdown'
 import { generateTaskId, createDefaultTask } from '@/lib/markdown'
 import './App.css'
@@ -66,19 +67,116 @@ function App() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
   const [editingData, setEditingData] = useState<TaskData | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  const isValidDateString = (s?: string) => {
+    if (!s) return false
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (!m) return false
+    const y = Number(m[1])
+    const mo = Number(m[2])
+    const d = Number(m[3])
+    const dt = new Date(y, mo - 1, d)
+    return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d
+  }
+
+  // When changing the required "date" field, only persist when the date is valid.
+  const handleDateChange = (field: 'date' | 'due', value: string) => {
+    if (!editingData || !editingNodeId) return
+
+    if (field === 'date') {
+      if (!value || value.length === 0) {
+        // don't wipe the date; show validation error instead
+        setValidationError('Date is required and must be YYYY-MM-DD')
+        return
+      }
+      if (!isValidDateString(value)) {
+        setValidationError('Date is required and must be YYYY-MM-DD')
+        return
+      }
+      // valid: update editingData, nodes, and save immediately
+      const next: TaskData = { ...editingData, date: value }
+      setEditingData(next)
+      setNodes((nds) => nds.map((n) => (n.id === editingNodeId ? { ...n, data: next } : n)))
+      setValidationError(null)
+      saveToStorage()
+      return
+    }
+
+    // due is optional
+    const next: TaskData = { ...editingData, due: value }
+    setEditingData(next)
+    setValidationError(null)
+  }
 
   // Handle edge connection
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((eds) => addEdge(connection, eds))
+      setEdges((eds) => addEdge({ ...connection, animated: true }, eds))
       saveToStorage()
     },
     [setEdges]
   )
 
+  // Delete an edge on double-click
+  const onEdgeDoubleClick = useCallback((event: MouseEvent, edge: any) => {
+    event.preventDefault()
+    setEdges((eds) => eds.filter((e) => e.id !== edge.id))
+    saveToStorage()
+  }, [setEdges])
+
+  // Keyboard shortcut: Delete / Backspace removes selected nodes and edges
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+
+      let removed = false
+
+      setEdges((eds) => {
+        const remaining = eds.filter((edge) => !edge.selected)
+        if (remaining.length !== eds.length) removed = true
+        return remaining
+      })
+
+      setNodes((nds) => {
+        const remaining = nds.filter((node) => !node.selected)
+        if (remaining.length !== nds.length) removed = true
+        return remaining
+      })
+
+      if (removed) saveToStorage()
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setEdges, setNodes])
+
   // Save node edits
   const handleSaveNode = useCallback(() => {
     if (!editingNodeId || !editingData) return
+
+    // validate before saving
+    const err = (() => {
+      if (!editingData.title || editingData.title.trim().length === 0) return 'Title is required'
+      const isValidDate = (s?: string) => {
+        if (!s) return false
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (!m) return false
+        const y = Number(m[1])
+        const mo = Number(m[2])
+        const d = Number(m[3])
+        const dt = new Date(y, mo - 1, d)
+        return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d
+      }
+      if (!isValidDate(editingData.date)) return 'Date is required and must be YYYY-MM-DD'
+      if (editingData.due && editingData.due.length > 0 && !isValidDate(editingData.due)) return 'Due date must be YYYY-MM-DD'
+      return null
+    })()
+
+    if (err) {
+      setValidationError(err)
+      return
+    }
 
     setNodes((nds) =>
       nds.map((node) =>
@@ -91,6 +189,7 @@ function App() {
     saveToStorage()
     setEditingNodeId(null)
     setEditingData(null)
+    setValidationError(null)
   }, [editingNodeId, editingData, setNodes])
 
   // Delete node
@@ -139,7 +238,7 @@ function App() {
       try {
         const flowState = JSON.parse(saved)
         setNodes(flowState.nodes)
-        setEdges(flowState.edges)
+        setEdges((flowState.edges || []).map((e: any) => ({ ...e, animated: true })))
       } catch (e) {
         console.error('Failed to load saved flow:', e)
       }
@@ -149,10 +248,37 @@ function App() {
   // Update editing data
   const updateNodeData = (field: keyof TaskData, value: string) => {
     if (!editingData) return
-    setEditingData({
+    const next: TaskData = {
       ...editingData,
       [field]: value,
-    })
+    }
+    setEditingData(next)
+
+    // realtime validation
+    const isValidDate = (s?: string) => {
+      if (!s) return false
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!m) return false
+      const y = Number(m[1])
+      const mo = Number(m[2])
+      const d = Number(m[3])
+      const dt = new Date(y, mo - 1, d)
+      return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d
+    }
+
+    if (!next.title || next.title.trim().length === 0) {
+      setValidationError('Title is required')
+      return
+    }
+    if (!isValidDate(next.date)) {
+      setValidationError('Date is required and must be YYYY-MM-DD')
+      return
+    }
+    if (next.due && next.due.length > 0 && !isValidDate(next.due)) {
+      setValidationError('Due date must be YYYY-MM-DD')
+      return
+    }
+    setValidationError(null)
   }
 
   return (
@@ -272,7 +398,12 @@ function App() {
 
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">Date</label>
-                  <input type="date" value={editingData.date} onChange={(e) => updateNodeData('date', e.target.value)} className="px-3 py-2 rounded border border-input bg-background text-foreground" />
+                  <DatePicker value={editingData.date} onChange={(v) => handleDateChange('date', v)} label="Created date" />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Due date (optional)</label>
+                  <DatePicker value={editingData.due || ''} onChange={(v) => handleDateChange('due', v)} label="Due date" />
                 </div>
 
                 <div className="flex flex-col gap-2 flex-1 min-h-0">
@@ -280,8 +411,12 @@ function App() {
                   <textarea value={editingData.content} onChange={(e) => updateNodeData('content', e.target.value)} className="px-3 py-2 rounded border border-input bg-background text-foreground font-mono text-xs flex-1 resize-none" placeholder="# Heading\n- Bullet point\n**Bold text**" />
                 </div>
 
+                {validationError ? (
+                  <div className="text-sm text-red-500">{validationError}</div>
+                ) : null}
+
                 <div className="flex gap-2 pt-4 border-t border-border/40">
-                  <Button onClick={handleSaveNode} className="flex-1" size="sm">Save Changes</Button>
+                  <Button onClick={handleSaveNode} className="flex-1" size="sm" disabled={!!validationError}>Save Changes</Button>
                   <Button onClick={() => { handleDeleteNode(editingNodeId); setEditingNodeId(null); setEditingData(null); }} variant="destructive" size="sm" className="gap-2">
                     <Trash2 className="h-4 w-4" />Delete
                   </Button>
