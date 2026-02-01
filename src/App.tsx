@@ -245,6 +245,35 @@ function App() {
     }
   }, [])
 
+  // Compute dependent (incoming) counts for each node so node components update immediately.
+  useEffect(() => {
+    setNodes((prevNodes) => {
+      let changed = false
+      const next = prevNodes.map((n) => {
+        const incoming = edges.filter((e) => e.target === n.id)
+        const sources = incoming.map((e) => e.source)
+        const completed = sources.reduce((acc, sid) => {
+          const node = prevNodes.find((x) => x.id === sid)
+          return acc + (node?.data?.status === 'done' ? 1 : 0)
+        }, 0)
+        const related = sources.length
+        const percent = related > 0 ? Math.round((completed / related) * 100) : n.data?.status === 'done' ? 100 : 0
+
+        const currentRelated = (n.data as any)?._relatedCount ?? null
+        const currentCompleted = (n.data as any)?._completedCount ?? null
+        const currentPercent = (n.data as any)?._progressPercent ?? null
+
+        if (currentRelated !== related || currentCompleted !== completed || currentPercent !== percent) {
+          changed = true
+          return { ...n, data: { ...n.data, _relatedCount: related, _completedCount: completed, _progressPercent: percent } }
+        }
+        return n
+      })
+
+      return changed ? next : prevNodes
+    })
+  }, [edges, nodes])
+
   // Update editing data
   const updateNodeData = (field: keyof TaskData, value: string) => {
     if (!editingData) return
@@ -392,18 +421,31 @@ function App() {
                 </div>
 
                 <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <select
+                    value={editingData.status || 'new'}
+                    onChange={(e) => updateNodeData('status', e.target.value as any)}
+                    className="px-3 py-2 rounded border border-input bg-background text-foreground"
+                  >
+                    <option value="new">New</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">Title</label>
                   <input type="text" value={editingData.title} onChange={(e) => updateNodeData('title', e.target.value)} className="px-3 py-2 rounded border border-input bg-background text-foreground" placeholder="Task title" />
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Date</label>
-                  <DatePicker value={editingData.date} onChange={(v) => handleDateChange('date', v)} label="Created date" />
+                  <label className="text-sm font-medium">Created</label>
+                  <div className="px-3 py-2 rounded border border-input bg-background text-foreground">{editingData.date}</div>
                 </div>
 
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">Due date (optional)</label>
-                  <DatePicker value={editingData.due || ''} onChange={(v) => handleDateChange('due', v)} label="Due date" />
+                  <DatePicker value={editingData.due || ''} onChange={(v) => updateNodeData('due', v)} label="Due date" />
                 </div>
 
                 <div className="flex flex-col gap-2 flex-1 min-h-0">

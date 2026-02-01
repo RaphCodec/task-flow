@@ -6,6 +6,7 @@ export interface TaskMetadata {
 export interface TaskData extends TaskMetadata {
   content: string
   due?: string
+  status?: 'new' | 'in-progress' | 'done'
 }
 
 const TASKS_DIR = 'tasks'
@@ -68,5 +69,6 @@ export function createDefaultTask(title: string = 'Untitled Task'): TaskData {
     date: new Date().toISOString().split('T')[0],
     content: '',
     due: '',
+    status: 'new',
   }
 }
